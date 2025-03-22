@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>स्टॉक रजिस्टर</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #1A3C61;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #e0f0ff;
+      color: #333;
+    }
+
+    tr:hover {
+      background-color: #f0f8ff;
+    }
+
+    .form-container {
+      margin-top: 20px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    input[type="number"], input[type="date"] {
+      padding: 8px;
+      margin: 5px;
+      width: 160px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #1A3C61;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #145188;
+    }
+
+    .month-header {
+      background-color: #d0ecff;
+      font-weight: bold;
+      text-align: center;
+      color: #1A3C61;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📋 स्टॉक रजिस्टर</h2>
+
+  <!-- Period Generator -->
+  <div class="form-container">
+    <label>प्रारंभ तिथि: <input type="date" id="startDate" /></label>
+    <label>समाप्ति तिथि: <input type="date" id="endDate" /></label>
+    <br/>
+    <button onclick="generateDateRange()">➕ Add Period</button>
+  </div>
+
+  <!-- Entry Form -->
+  <div class="form-container">
+    <label>दिनांक: <input type="date" id="entryDate"></label>
+    <label>आमद मात्रा: <input type="number" id="entryReceived"></label>
+    <label>विक्रय मात्रा: <input type="number" id="entrySold"></label>
+    <br/>
+    <button onclick="updateStockEntry()">📝 Add / Update Entry</button>
+  </div>
+
+  <!-- Table -->
+  <table id="stockTable">
+    <thead>
+      <tr>
+        <th>दिनांक</th>
+        <th>प्रारम्भिक भंडार</th>
+        <th>आमद मात्रा</th>
+        <th>योग</th>
+        <th>विक्रय मात्रा</th>
+        <th>अवशेष स्टॉक</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <!-- Rows go here -->
+    </tbody>
+  </table>
+
+  <script>
+    const allData = [];
+
+    function formatDate(dateStr) {
+      return new Date(dateStr).toLocaleDateString('hi-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    function formatMonthHeader(dateStr) {
+      return new Date(dateStr).toLocaleDateString('hi-IN', {
+        month: 'long',
+        year: 'numeric'
+      });
+    }
+
+    function generateDateRange() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+
+      if (!start || !end) {
+        alert("कृपया दोनों तिथियाँ भरें।");
+        return;
+      }
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+
+      if (startDate > endDate) {
+        alert("प्रारंभ तिथि समाप्ति तिथि से पहले होनी चाहिए।");
+        return;
+      }
+
+      let current = new Date(startDate);
+      while (current <= endDate) {
+        const isoDate = current.toISOString().split("T")[0];
+
+        // Only add if date not already exists
+        if (!allData.find(d => d.date === isoDate)) {
+          allData.push({
+            date: isoDate,
+            received: 0,
+            sold: 0
+          });
+        }
+
+        current.setDate(current.getDate() + 1);
+      }
+
+      allData.sort((a, b) => new Date(a.date) - new Date(b.date));
+      renderTable();
+    }
+
+    function updateStockEntry() {
+      const date = document.getElementById("entryDate").value;
+      const received = document.getElementById("entryReceived").value;
+      const sold = document.getElementById("entrySold").value;
+
+      if (!date) {
+        alert("कृपया दिनांक भरें।");
+        return;
+      }
+
+      const index = allData.findIndex(item => item.date === date);
+      if (index === -1) {
+        alert("यह दिनांक तालिका में नहीं है। कृपया पहले पीरियड जोड़ें।");
+        return;
+      }
+
+      if (received !== '') allData[index].received = parseInt(received);
+      if (sold !== '') allData[index].sold = parseInt(sold);
+
+      renderTable();
+
+      // Clear form
+      document.getElementById("entryDate").value = '';
+      document.getElementById("entryReceived").value = '';
+      document.getElementById("entrySold").value = '';
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = '';
+
+      let currentMonth = '';
+      let previousRemaining = 0;
+
+      allData.forEach((item, index) => {
+        const itemMonth = formatMonthHeader(item.date);
+
+        if (itemMonth !== currentMonth) {
+          const monthRow = document.createElement("tr");
+          monthRow.innerHTML = `<td class="month-header" colspan="6">📅 ${itemMonth}</td>`;
+          tbody.appendChild(monthRow);
+          currentMonth = itemMonth;
+        }
+
+        const opening = previousRemaining;
+        const received = parseInt(item.received) || 0;
+        const sold = parseInt(item.sold) || 0;
+        const total = opening + received;
+        const remaining = total - sold;
+
+        previousRemaining = remaining;
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${formatDate(item.date)}</td>
+          <td>${opening}</td>
+          <td>${received}</td>
+          <td>${total}</td>
+          <td>${sold}</td>
+          <td>${remaining}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+  </script>
+
+</body>
+</html>
